@@ -5,7 +5,7 @@
 Version `0.1.0`
 
 ## Introduction
-The **Spanner Cassandra Go Client** is a tool designed to bridge applications written for the Apache Cassandra® database with Google Spanner. With Spanner's native support for the Cassandra v4 wire protocol, this adapter allows Go applications using the `gocql` driver, or even non-Go applications and tools like `cqlsh`, to connect seamlessly to a Spanner database.
+The **Spanner Cassandra Go Client** is a tool designed to bridge applications written for the Apache Cassandra® database with Google Spanner. With Spanner's native support for the Cassandra v4 wire protocol, this client allows Go applications using the `gocql` driver, or even non-Go applications and tools like `cqlsh`, to connect seamlessly to a Spanner database.
 
 This client acts as a local tcp proxy, intercepting the raw Cassandra protocol bytes sent by a driver or client tool. It then wraps these bytes along with necessary metadata into gRPC messages for communication with Spanner. Responses from Spanner are translated back into the Cassandra wire format and sent back to the originating driver or tool.
 
@@ -49,15 +49,15 @@ gcloud config set project [MY_PROJECT_NAME]
 
 ## Spanner Instructions
 
-- Database and all the tables should be created in advance before executing the queries using the adapter.
+- Database and all the tables should be created in advance before executing the queries against Spanner Cassandra Go Client.
 - To migrate existing Cassandra schema to corresponding Spanner schema, refer to [spanner-cassandra-schema-tool](https://github.com/cloudspannerecosystem/spanner-cassandra-schema-tool) to automate this process.
 
 ## Getting Started
 
 You can use `spanner-cassandra` in two main ways: as an **in-process dependency** within your Go application, or as a standalone **sidecar proxy** for other applications and tools.
 
-* **In-Process Dependency:** Choose this method if you have a Go application already using `gocql` and want the adapter to run within the same process, providing a seamless switch to Spanner with minimal code modifications.
-* **Sidecar Proxy:** Choose this method if your application is not written in Go, or if you want to use external Cassandra tools (like `cqlsh`) without modifying the application's code. The adapter runs as a separate process, intercepting network traffic.
+* **In-Process Dependency:** Choose this method if you have a Go application already using `gocql` and want the spanner-cassandra client to run within the same process, providing a seamless switch to Spanner with minimal code modifications.
+* **Sidecar Proxy:** Choose this method if your application is not written in Go, or if you want to use external Cassandra tools (like `cqlsh`) without modifying the application's code. The spanner-cassandra client runs as a separate process, intercepting network traffic.
 
 ### In-Process Dependency (Recommended)
 
@@ -65,7 +65,7 @@ For Go applications already using the `gocql` library, integrating the Spanner C
 
 **Steps:**
 
-*   Import the adapter's `spanner` package:
+*   Import the `spanner` package in your go applcation:
 
     ```go
     import spanner "cloud.google.com/go/spanner-cassandra/cassandra/gocql"
@@ -83,7 +83,7 @@ For Go applications already using the `gocql` library, integrating the Spanner C
       cluster.Timeout = 5 * time.Second
       // Your Spanner database schema is mapped to a keyspace
       cluster.Keyspace = "your_spanner_database"
-      // Important to close the adapter's resources
+      // Important to close the resources
       defer spanner.CloseCluster(cluster)
       // Rest of your business logic
       session, err := cluster.CreateSession()
@@ -96,7 +96,7 @@ For Go applications already using the `gocql` library, integrating the Spanner C
     }
     ```
 
-*  Run your Go application as usual. The adapter will now route traffic to your Spanner database.
+*  Run your Go application as usual. The client will now route traffic to your Spanner database.
 
 ### Sidecar Proxy
 
@@ -143,15 +143,15 @@ For non-Go applications or tools like `cqlsh`, you can run the Spanner Cassandra
 
 ## Options
 
-The following list contains the most frequently used startup options for Spanner Cassandra Adapter.
+The following list contains the most frequently used startup options for Spanner Cassandra Client.
 
 ```
 -db <DatabaseUri>
-  * The Spanner database URI (required). This specifies the Spanner database that the adapter will connect to.
+  * The Spanner database URI (required). This specifies the Spanner database that the client will connect to.
   * Example: projects/your-project/instances/your-instance/databases/your-database
 
 -tcp <TCPEndpoint>
-  * The Spanner Adapter proxy listener address. This defines the TCP endpoint where the adapter will listen for incoming Cassandra client connections.
+  * The client proxy listener address. This defines the TCP endpoint where the client will listen for incoming Cassandra client connections.
   * Default:
     * When running in-process inside Golang applicaion: localhost:9042
     * When running as a sidecar proxy: :9042 to bind all network interfaces, suitable for Docker forwarding.
