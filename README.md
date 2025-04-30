@@ -10,6 +10,8 @@ The **Spanner Cassandra Go Client** is a tool designed to bridge applications wr
 
 This client acts as a local tcp proxy, intercepting the raw Cassandra protocol bytes sent by a driver or client tool. It then wraps these bytes along with necessary metadata into gRPC messages for communication with Spanner. Responses from Spanner are translated back into the Cassandra wire format and sent back to the originating driver or tool.
 
+![in-process](in-process.png)
+
 ## Table of Contents
 
 - [When to use spanner-cassandra?](#when-to-use-spanner-cassandra)
@@ -100,6 +102,8 @@ For Go applications already using the `gocql` library, integrating the Spanner C
 *  Run your Go application as usual. The client will now route traffic to your Spanner database.
 
 ### Sidecar Proxy
+
+![sidecar](sidecar.png)
 
 For non-Go applications or tools like `cqlsh`, you can run the Spanner Cassandra Go Client as a standalone proxy.
 
