@@ -25,6 +25,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/big"
 	"os"
 	"testing"
 	"time"
@@ -296,5 +297,228 @@ func TestBatch(t *testing.T) {
 		t.Fatal("select count:", err)
 	} else if count != 10 {
 		t.Fatalf("count: expected %d, got %d\n", 100, count)
+	}
+}
+
+func TestSmallInt(t *testing.T) {
+	session, err := cluster.CreateSession()
+	if err != nil {
+		log.Fatalf("Failed to create cql session: %v", err)
+	}
+	defer session.Close()
+
+	if env == "spanner" {
+		if err := createSpannerTable(`CREATE TABLE smallint_table (id INT64 NOT NULL OPTIONS (cassandra_type = 'smallint'))PRIMARY KEY (id)`); err != nil {
+			t.Fatal("create spanner table:", err)
+		}
+	} else {
+		if err := createCqlTable(session, `CREATE TABLE smallint_table (id smallint primary key)`); err != nil {
+			t.Fatal("create cassandra table:", err)
+		}
+	}
+
+	m := make(map[string]interface{})
+	m["id"] = int16(2)
+	sliceMap := []map[string]interface{}{m}
+	if err := session.Query(`INSERT INTO smallint_table (id) VALUES (?)`,
+		m["id"]).Exec(); err != nil {
+		t.Fatal("insert:", err)
+	}
+	if returned, retErr := session.Query(`SELECT * FROM smallint_table`).Iter().SliceMap(); retErr != nil {
+		t.Fatal("select:", retErr)
+	} else {
+		if sliceMap[0]["id"] != returned[0]["id"] {
+			t.Fatal("returned id did not match")
+		}
+	}
+}
+
+func TestScanWithNilArguments(t *testing.T) {
+	session, err := cluster.CreateSession()
+	if err != nil {
+		log.Fatalf("Failed to create cql session: %v", err)
+	}
+	defer session.Close()
+
+	if env == "spanner" {
+		if err := createSpannerTable(`CREATE TABLE scan_with_nil_arguments (
+			foo STRING(MAX) OPTIONS (cassandra_type = 'varchar'),
+			bar INT64 OPTIONS (cassandra_type = 'int'),
+			) 
+			PRIMARY KEY (foo, bar)`); err != nil {
+			t.Fatal("create spanner table:", err)
+		}
+	} else {
+		if err := createCqlTable(session, `CREATE TABLE scan_with_nil_arguments (
+			foo   varchar,
+			bar   int,
+			PRIMARY KEY (foo, bar)
+		)`); err != nil {
+			t.Fatal("create cassandra table:", err)
+		}
+	}
+
+	for i := 1; i <= 20; i++ {
+		if err := session.Query("INSERT INTO scan_with_nil_arguments (foo, bar) VALUES (?, ?)",
+			"squares", i*i).Exec(); err != nil {
+			t.Fatal("insert:", err)
+		}
+	}
+
+	iter := session.Query("SELECT * FROM scan_with_nil_arguments WHERE foo = ?", "squares").Iter()
+	var n int
+	count := 0
+	for iter.Scan(nil, &n) {
+		count += n
+	}
+	if err := iter.Close(); err != nil {
+		t.Fatal("close:", err)
+	}
+	if count != 2870 {
+		t.Fatalf("expected %d, got %d", 2870, count)
+	}
+}
+
+func TestRebindQueryInfo(t *testing.T) {
+	session, err := cluster.CreateSession()
+	if err != nil {
+		log.Fatalf("Failed to create cql session: %v", err)
+	}
+	defer session.Close()
+
+	if env == "spanner" {
+		if err := createSpannerTable(`CREATE TABLE rebind_query (
+			id INT64 NOT NULL OPTIONS (cassandra_type = 'int'),
+			value STRING(MAX) NOT NULL OPTIONS (cassandra_type = 'text'),
+			) 
+			PRIMARY KEY (id)`); err != nil {
+			t.Fatal("create spanner table:", err)
+		}
+	} else {
+		if err := createCqlTable(session, `CREATE TABLE rebind_query (id int, value text, PRIMARY KEY (id))`); err != nil {
+			t.Fatal("create cassandra table:", err)
+		}
+	}
+
+	if err := session.Query("INSERT INTO rebind_query (id, value) VALUES (?, ?)", 23, "quux").Exec(); err != nil {
+		t.Fatalf("insert into rebind_query failed, err '%v'", err)
+	}
+
+	if err := session.Query("INSERT INTO rebind_query (id, value) VALUES (?, ?)", 24, "w00t").Exec(); err != nil {
+		t.Fatalf("insert into rebind_query failed, err '%v'", err)
+	}
+
+	q := session.Query("SELECT value FROM rebind_query WHERE ID = ?")
+	q.Bind(23)
+
+	iter := q.Iter()
+	var value string
+	for iter.Scan(&value) {
+	}
+
+	if value != "quux" {
+		t.Fatalf("expected %v but got %v", "quux", value)
+	}
+
+	q.Bind(24)
+	iter = q.Iter()
+
+	for iter.Scan(&value) {
+	}
+
+	if value != "w00t" {
+		t.Fatalf("expected %v but got %v", "w00t", value)
+	}
+}
+
+func TestVarint(t *testing.T) {
+	session, err := cluster.CreateSession()
+	if err != nil {
+		log.Fatalf("Failed to create cql session: %v", err)
+	}
+	defer session.Close()
+
+	if env == "spanner" {
+		if err := createSpannerTable(`CREATE TABLE varint_test (
+			id STRING(MAX) NOT NULL OPTIONS (cassandra_type = 'varchar'),
+			test NUMERIC OPTIONS (cassandra_type = 'varint'),
+			test2 NUMERIC OPTIONS (cassandra_type = 'varint'),
+			) 
+			PRIMARY KEY (id)`); err != nil {
+			t.Fatal("create spanner table:", err)
+		}
+	} else {
+		if err := createCqlTable(session, `CREATE TABLE varint_test (id varchar, test varint, test2 varint, primary key (id))`); err != nil {
+			t.Fatal("create cassandra table:", err)
+		}
+	}
+
+	if err := session.Query(`INSERT INTO varint_test (id, test) VALUES (?, ?)`, "id", 0).Exec(); err != nil {
+		t.Fatalf("insert varint: %v", err)
+	}
+
+	var result int
+	if err := session.Query("SELECT test FROM varint_test").Scan(&result); err != nil {
+		t.Fatalf("select from varint_test failed: %v", err)
+	}
+
+	if result != 0 {
+		t.Errorf("Expected 0, was %d", result)
+	}
+
+	if err := session.Query(`INSERT INTO varint_test (id, test) VALUES (?, ?)`, "id", nil).Exec(); err != nil {
+		t.Fatalf("insert varint: %v", err)
+	}
+
+	if err := session.Query("SELECT test FROM varint_test").Scan(&result); err != nil {
+		t.Fatalf("select from varint_test failed: %v", err)
+	}
+
+	if result != 0 {
+		t.Errorf("Expected 0, was %d", result)
+	}
+
+	var nullableResult *int
+
+	if err := session.Query("SELECT test FROM varint_test").Scan(&nullableResult); err != nil {
+		t.Fatalf("select from varint_test failed: %v", err)
+	}
+
+	if nullableResult != nil {
+		t.Errorf("Expected nil, was %d", nullableResult)
+	}
+
+	biggie := new(big.Int)
+	biggie.SetString("36893488147419103232", 10) // > 2**64
+	if err := session.Query(`INSERT INTO varint_test (id, test) VALUES (?, ?)`, "id", biggie).Exec(); err != nil {
+		t.Fatalf("insert varint: %v", err)
+	}
+
+	resultBig := new(big.Int)
+	if err := session.Query("SELECT test FROM varint_test").Scan(resultBig); err != nil {
+		t.Fatalf("select from varint_test failed: %v", err)
+	}
+
+	if resultBig.String() != biggie.String() {
+		t.Errorf("Expected %s, was %s", biggie.String(), resultBig.String())
+	}
+
+	// value not set in cassandra, leave bind variable empty
+	resultBig = new(big.Int)
+	if err := session.Query("SELECT test2 FROM varint_test").Scan(resultBig); err != nil {
+		t.Fatalf("select from varint_test failed: %v", err)
+	}
+
+	if resultBig.Int64() != 0 {
+		t.Errorf("Expected %s, was %s", biggie.String(), resultBig.String())
+	}
+
+	// can use double pointer to explicitly detect value is not set in cassandra
+	if err := session.Query("SELECT test2 FROM varint_test").Scan(&resultBig); err != nil {
+		t.Fatalf("select from varint_test failed: %v", err)
+	}
+
+	if resultBig != nil {
+		t.Errorf("Expected %v, was %v", nil, *resultBig)
 	}
 }
