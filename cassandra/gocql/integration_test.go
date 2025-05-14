@@ -27,12 +27,14 @@ import (
 	"log"
 	"math/big"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
 	database "cloud.google.com/go/spanner/admin/database/apiv1"
 	adminpb "cloud.google.com/go/spanner/admin/database/apiv1/databasepb"
 	"github.com/gocql/gocql"
+	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"google.golang.org/api/option"
@@ -521,4 +523,112 @@ func TestVarint(t *testing.T) {
 	if resultBig != nil {
 		t.Errorf("Expected %v, was %v", nil, *resultBig)
 	}
+}
+
+func TestNilInQuery(t *testing.T) {
+	session, err := cluster.CreateSession()
+	if err != nil {
+		log.Fatalf("Failed to create cql session: %v", err)
+	}
+	defer session.Close()
+
+	if env == "spanner" {
+		if err := createSpannerTable(`CREATE TABLE testNilInsert (
+			id INT64 OPTIONS (cassandra_type = 'int'),
+			count_col INT64 OPTIONS (cassandra_type = 'int'),
+			) 
+			PRIMARY KEY (id)`); err != nil {
+			t.Fatal("create spanner table:", err)
+		}
+	} else {
+		if err := createCqlTable(session, `CREATE TABLE testNilInsert (id int, count_col int, PRIMARY KEY (id))`); err != nil {
+			t.Fatal("create cassandra table:", err)
+		}
+	}
+
+	if err := session.Query("INSERT INTO testNilInsert (id,count_col) VALUES (?,?)", 1, nil).Exec(); err != nil {
+		t.Fatalf("failed to insert with err: %v", err)
+	}
+
+	var id int
+
+	if err := session.Query("SELECT id FROM testNilInsert").Scan(&id); err != nil {
+		t.Fatalf("failed to select with err: %v", err)
+	} else if id != 1 {
+		t.Fatalf("expected id to be 1, got %v", id)
+	}
+}
+
+func TestEmptyTimestamp(t *testing.T) {
+	session, err := cluster.CreateSession()
+	if err != nil {
+		log.Fatalf("Failed to create cql session: %v", err)
+	}
+	defer session.Close()
+
+	if env == "spanner" {
+		if err := createSpannerTable(`CREATE TABLE test_empty_timestamp (
+			id INT64 OPTIONS (cassandra_type = 'int'),
+			time TIMESTAMP OPTIONS (cassandra_type = 'timestamp'),
+			num INT64 OPTIONS (cassandra_type = 'int'),
+			) 
+			PRIMARY KEY (id)`); err != nil {
+			t.Fatal("create spanner table:", err)
+		}
+	} else {
+		if err := createCqlTable(session, `CREATE TABLE test_empty_timestamp (id int, time timestamp, num int, PRIMARY KEY (id))`); err != nil {
+			t.Fatal("create cassandra table:", err)
+		}
+	}
+
+	if err := session.Query("INSERT INTO test_empty_timestamp (id, num) VALUES (?,?)", 1, 561).Exec(); err != nil {
+		t.Fatalf("failed to insert with err: %v", err)
+	}
+
+	var timeVal time.Time
+
+	if err := session.Query("SELECT time FROM test_empty_timestamp where id = ?", 1).Scan(&timeVal); err != nil {
+		t.Fatalf("failed to select with err: %v", err)
+	}
+
+	if !timeVal.IsZero() {
+		t.Errorf("time.Time bind variable should still be empty (was %s)", timeVal)
+	}
+}
+
+func TestLargeSizeQuery(t *testing.T) {
+	session, err := cluster.CreateSession()
+	if err != nil {
+		log.Fatalf("Failed to create cql session: %v", err)
+	}
+	defer session.Close()
+
+	if env == "spanner" {
+		if err := createSpannerTable(`CREATE TABLE large_size_query (
+			id INT64 OPTIONS (cassandra_type = 'int'),
+			text_col STRING(MAX) OPTIONS (cassandra_type = 'varchar'),
+			) 
+			PRIMARY KEY (id)`); err != nil {
+			t.Fatal("create spanner table:", err)
+		}
+	} else {
+		if err := createCqlTable(session, `CREATE TABLE IF NOT EXISTS large_size_query(id int, text_col text, PRIMARY KEY (id))`); err != nil {
+			t.Fatal("create cassandra table:", err)
+		}
+	}
+
+	longString := strings.Repeat("a", 500_000)
+
+	err = session.Query("INSERT INTO large_size_query (id, text_col) VALUES (?, ?)", "1", longString).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var result string
+	err = session.Query("SELECT text_col FROM large_size_query").Scan(&result)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	require.Equal(t, longString, result)
 }
