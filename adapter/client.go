@@ -33,6 +33,7 @@ import (
 	"google.golang.org/api/option/internaloption"
 	"google.golang.org/grpc"
 
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	_ "google.golang.org/grpc/xds/googledirectpath"
 
@@ -187,6 +188,12 @@ func getAllClientOpts(
 			clientDefaultOpts,
 			internaloption.EnableDirectPath(true),
 			internaloption.EnableDirectPathXds(),
+		)
+	}
+	if opts.Insecure {
+		clientDefaultOpts = append(
+			clientDefaultOpts,
+			option.WithGRPCDialOption(grpc.WithTransportCredentials(insecure.NewCredentials())),
 		)
 	}
 

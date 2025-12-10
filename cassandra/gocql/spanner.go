@@ -52,6 +52,9 @@ type Options struct {
 	LogLevel string
 	// Optional google api opts. Default to empty.
 	GoogleApiOpts []option.ClientOption
+	// Optional boolean indicate whether to use insecure grpc connection.
+	// Defaults to false.
+	Insecure bool
 }
 
 type ProxyAddressTranslator struct {
@@ -86,6 +89,7 @@ func NewCluster(
 			DisableAdaptMessageRetry: opts.DisableAdaptMessageRetry,
 			MaxCommitDelay:           opts.MaxCommitDelay,
 			GoogleApiOpts:            opts.GoogleApiOpts,
+			Insecure:                 opts.Insecure,
 		},
 	)
 	if err != nil {

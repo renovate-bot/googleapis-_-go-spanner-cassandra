@@ -37,4 +37,7 @@ type Options struct {
 	MaxCommitDelay int
 	// Optional google api opts. Default to empty.
 	GoogleApiOpts []option.ClientOption
+	// Optional boolean indicate whether to use insecure grpc connection.
+	// Defaults to false.
+	Insecure bool
 }

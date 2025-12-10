@@ -66,6 +66,17 @@ func main() {
 		0,
 		"The maximum delay in milliseconds. Default is 0 (disabled).",
 	)
+	spannerEndpoint := flag.String(
+		"endpoint",
+		"",
+		"The Spanner service endpoint (optional). Default to Cloud Spanner endpoint: spanner.googleapis.com:443",
+	)
+
+	insecure := flag.Bool(
+		"insecure",
+		false,
+		"Whether to use insecure connection to Spanner. Default to false.",
+	)
 
 	flag.Parse()
 
@@ -81,6 +92,8 @@ func main() {
 		NumGrpcChannels: *numGrpcChannels,
 		LogLevel:        *logLevel,
 		MaxCommitDelay:  *maxCommitDelay,
+		SpannerEndpoint: *spannerEndpoint,
+		Insecure:        *insecure,
 	}
 
 	cluster := spanner.NewCluster(opts)
