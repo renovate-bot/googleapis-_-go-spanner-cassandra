@@ -37,7 +37,15 @@ type Options struct {
 	MaxCommitDelay int
 	// Optional google api opts. Default to empty.
 	GoogleApiOpts []option.ClientOption
-	// Optional boolean indicate whether to use insecure grpc connection.
+	// Optional boolean indicate whether to use plain-text connection.
 	// Defaults to false.
-	Insecure bool
+	UsePlainText bool
+	// Optional boolean indicate whether endpoint is experimental host instance
+	ExperimentalHost bool
+	// Optional string CA certificate file path for establishing tls connection
+	CaCertificate string
+	// Optional string client certificate file path for establishing mTLS connection
+	ClientCertificate string
+	// Optional string client key file path for establishing mTLS connection
+	ClientKey string
 }

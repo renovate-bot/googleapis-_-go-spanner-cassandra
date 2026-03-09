@@ -72,10 +72,34 @@ func main() {
 		"The Spanner service endpoint (optional). Default to Cloud Spanner endpoint: spanner.googleapis.com:443",
 	)
 
-	insecure := flag.Bool(
-		"insecure",
+	usePlainText := flag.Bool(
+		"usePlainText",
 		false,
-		"Whether to use insecure connection to Spanner. Default to false.",
+		"Whether to use plain-text connection to Spanner. Default to false.",
+	)
+
+	experimentalHost := flag.Bool(
+		"experimentalHost",
+		false,
+		"Spanner Endpoint is an experimental host instance (optional). Default to false.",
+	)
+
+	caCertificate := flag.String(
+		"caCertificate",
+		"",
+		"The CA certificate file path for establishing tls connection(optional). Default to empty.",
+	)
+
+	clientCertificate := flag.String(
+		"clientCertificate",
+		"",
+		"The client certificate file path for establishing mTLS connection(optional). Default to empty.",
+	)
+
+	clientKey := flag.String(
+		"clientKey",
+		"",
+		"The client key file path for establishing mTLS connection(optional). Default to empty.",
 	)
 
 	flag.Parse()
@@ -87,13 +111,17 @@ func main() {
 	}
 
 	opts := &spanner.Options{
-		DatabaseUri:     *databaseURI,
-		TCPEndpoint:     *tcpEndpoint,
-		NumGrpcChannels: *numGrpcChannels,
-		LogLevel:        *logLevel,
-		MaxCommitDelay:  *maxCommitDelay,
-		SpannerEndpoint: *spannerEndpoint,
-		Insecure:        *insecure,
+		DatabaseUri:       *databaseURI,
+		TCPEndpoint:       *tcpEndpoint,
+		NumGrpcChannels:   *numGrpcChannels,
+		LogLevel:          *logLevel,
+		MaxCommitDelay:    *maxCommitDelay,
+		SpannerEndpoint:   *spannerEndpoint,
+		UsePlainText:      *usePlainText,
+		ExperimentalHost:  *experimentalHost,
+		CaCertificate:     *caCertificate,
+		ClientCertificate: *clientCertificate,
+		ClientKey:         *clientKey,
 	}
 
 	cluster := spanner.NewCluster(opts)

@@ -21,6 +21,8 @@ package adapter
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -77,6 +79,110 @@ func TestGetOrRefreshSession(t *testing.T) {
 				)
 			}
 
+		})
+	}
+}
+
+func TestGetAllClientOpts(t *testing.T) {
+	t.Parallel()
+	opts := Options{}
+	clientOpts, err := getAllClientOpts(opts)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, clientOpts)
+
+	opts.SpannerEndpoint = "some.endpoint"
+	clientOpts, err = getAllClientOpts(opts)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, clientOpts)
+
+	opts.UsePlainText = true
+	clientOpts, err = getAllClientOpts(opts)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, clientOpts)
+
+	opts.UsePlainText = false
+	opts.ExperimentalHost = true
+	clientOpts, err = getAllClientOpts(opts)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, clientOpts)
+}
+
+func TestCreateExperimentalHostNoCredentials(t *testing.T) {
+	t.Parallel()
+	creds, err := createExperimentalHostCredentials("", "", "")
+	assert.NoError(t, err)
+	assert.Nil(t, creds)
+}
+
+func createDummyCerts(t *testing.T) (caFile, certFile, keyFile string) {
+	t.Helper()
+	dir := t.TempDir()
+	caFile = filepath.Join(dir, "ca.crt")
+	certFile = filepath.Join(dir, "client.crt")
+	keyFile = filepath.Join(dir, "client.key")
+
+	// Simplified dummy content, not valid certs
+	assert.NoError(t, os.WriteFile(caFile, []byte("CA CERT"), 0644))
+	assert.NoError(t, os.WriteFile(certFile, []byte("CLIENT CERT"), 0644))
+	assert.NoError(t, os.WriteFile(keyFile, []byte("CLIENT KEY"), 0644))
+	return
+}
+
+func TestCreateExperimentalHostCredentials(t *testing.T) {
+	caFile, certFile, keyFile := createDummyCerts(t)
+
+	tests := []struct {
+		name       string
+		caCert     string
+		clientCert string
+		clientKey  string
+		wantErr    bool
+		expectTLS  bool
+		expectMTLS bool
+	}{
+		{
+			name:    "No certs",
+			wantErr: false,
+		},
+		{
+			name:    "CA cert only - invalid content",
+			caCert:  caFile, // Will fail to parse as PEM
+			wantErr: true,
+		},
+		{
+			name:       "Client cert without key",
+			caCert:     caFile,
+			clientCert: certFile,
+			wantErr:    true,
+		},
+		{
+			name:      "Client key without cert",
+			caCert:    caFile,
+			clientKey: keyFile,
+			wantErr:   true,
+		},
+		{
+			name:       "All certs - invalid content",
+			caCert:     caFile,
+			clientCert: certFile,
+			clientKey:  keyFile,
+			wantErr:    true, // Will fail to load key pair
+		},
+		// Success cases are hard to test without valid PEM data
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opt, err := createExperimentalHostCredentials(tt.caCert, tt.clientCert, tt.clientKey)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("createExperimentalHostCredentials() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !tt.wantErr && tt.caCert != "" {
+				assert.NotNil(t, opt, "Expected a ClientOption to be returned")
+			} else if !tt.wantErr && tt.caCert == "" {
+				assert.Nil(t, opt, "Expected nil option when no CA cert")
+			}
 		})
 	}
 }
