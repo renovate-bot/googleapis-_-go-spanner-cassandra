@@ -87,10 +87,8 @@ func NewCluster(
 			err,
 		)
 	}
-	if opts.ExperimentalHost {
-		if !strings.Contains(opts.DatabaseUri, "/") {
-			opts.DatabaseUri = "projects/default/instances/default/databases/" + opts.DatabaseUri
-		}
+	if opts.ExperimentalHost && !strings.Contains(opts.DatabaseUri, "/") {
+		opts.DatabaseUri = "projects/default/instances/default/databases/" + opts.DatabaseUri
 	}
 	// Create a new local Cassandra proxy.
 	proxy, err := adapter.NewTCPProxy(

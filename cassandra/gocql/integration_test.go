@@ -152,7 +152,7 @@ func setupAndRunSpanner(m *testing.M, spannerEndpoint string) int {
 	instanceURI := os.Getenv("INTEGRATION_TEST_INSTANCE")
 	if instanceURI == "" && experimentalHost == "" {
 		log.Fatalf(
-			"environment variable INTEGRATION_TEST_INSTANCE is not set or is empty",
+			"at least one of the environment variables INTEGRATION_TEST_INSTANCE or EXPERIMENTAL_HOST must be set and non-empty for the integration test",
 		)
 	}
 	if experimentalHost != "" {
