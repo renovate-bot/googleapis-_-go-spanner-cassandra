@@ -42,6 +42,8 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"google.golang.org/api/option"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"gopkg.in/inf.v0"
 )
 
@@ -146,17 +148,27 @@ func assertDeepEqual(
 func setupAndRunSpanner(m *testing.M, spannerEndpoint string) int {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
 	defer cancel()
+	experimentalHost := os.Getenv("EXPERIMENTAL_HOST")
 	instanceURI := os.Getenv("INTEGRATION_TEST_INSTANCE")
-	if instanceURI == "" {
+	if instanceURI == "" && experimentalHost == "" {
 		log.Fatalf(
-			"environment variable INTEGRATION_TEST_INSTANCE is not set or is empty",
+			"at least one of the environment variables INTEGRATION_TEST_INSTANCE or EXPERIMENTAL_HOST must be set and non-empty for the integration test",
 		)
+	}
+	if experimentalHost != "" {
+		instanceURI = "projects/default/instances/default"
+		spannerEndpoint = experimentalHost
 	}
 	databaseUri = fmt.Sprintf("%s/databases/%s", instanceURI, keyspace)
 	var err error
-	adminClient, err = database.NewDatabaseAdminClient(ctx, []option.ClientOption{
+	clientOpts := []option.ClientOption{
 		option.WithEndpoint(spannerEndpoint),
-	}...)
+	}
+	if experimentalHost != "" {
+		clientOpts = append(clientOpts, option.WithoutAuthentication())
+		clientOpts = append(clientOpts, option.WithGRPCDialOption(grpc.WithTransportCredentials(insecure.NewCredentials())))
+	}
+	adminClient, err = database.NewDatabaseAdminClient(ctx, clientOpts...)
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
@@ -193,6 +205,11 @@ func setupAndRunSpanner(m *testing.M, spannerEndpoint string) int {
 		SpannerEndpoint: spannerEndpoint,
 		LogLevel:        "warn",
 		MaxCommitDelay:  randomMaxCommitDelay,
+	}
+
+	if experimentalHost != "" {
+		opts.ExperimentalHost = true
+		opts.UsePlainText = true
 	}
 
 	cluster = NewCluster(opts)

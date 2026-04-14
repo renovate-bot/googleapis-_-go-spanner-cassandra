@@ -20,6 +20,7 @@ package spanner
 import (
 	"encoding/binary"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/gocql/gocql"
@@ -52,9 +53,17 @@ type Options struct {
 	LogLevel string
 	// Optional google api opts. Default to empty.
 	GoogleApiOpts []option.ClientOption
-	// Optional boolean indicate whether to use insecure grpc connection.
+	// Optional boolean indicate whether to use plain-text connection.
 	// Defaults to false.
-	Insecure bool
+	UsePlainText bool
+	// Optional boolean indicate whether spanner endpoint is a Experimental Host instance
+	ExperimentalHost bool
+	// Optional string CA certificate file path for establishing tls connection
+	CaCertificate string
+	// Optional string client certificate file path for establishing mTLS connection
+	ClientCertificate string
+	// Optional string client key file path for establishing mTLS connection
+	ClientKey string
 }
 
 type ProxyAddressTranslator struct {
@@ -78,6 +87,9 @@ func NewCluster(
 			err,
 		)
 	}
+	if opts.ExperimentalHost && !strings.Contains(opts.DatabaseUri, "/") {
+		opts.DatabaseUri = "projects/default/instances/default/databases/" + opts.DatabaseUri
+	}
 	// Create a new local Cassandra proxy.
 	proxy, err := adapter.NewTCPProxy(
 		adapter.Options{
@@ -89,7 +101,11 @@ func NewCluster(
 			DisableAdaptMessageRetry: opts.DisableAdaptMessageRetry,
 			MaxCommitDelay:           opts.MaxCommitDelay,
 			GoogleApiOpts:            opts.GoogleApiOpts,
-			Insecure:                 opts.Insecure,
+			UsePlainText:             opts.UsePlainText,
+			ExperimentalHost:         opts.ExperimentalHost,
+			CaCertificate:            opts.CaCertificate,
+			ClientCertificate:        opts.ClientCertificate,
+			ClientKey:                opts.ClientKey,
 		},
 	)
 	if err != nil {

@@ -203,6 +203,52 @@ func TestBasicBatch(t *testing.T) {
 	}
 }
 
+func TestNewCluster_ExperimentalHost(t *testing.T) {
+	t.Cleanup(adapter.ResetGrpcFuncs())
+	adapter.MockCreateSessionGrpc()
+	adapter.MockAdaptMessageGrpc(false)
+
+	testCases := []struct {
+		name             string
+		initialDatabase  string
+		expectedDatabase string
+		experimentalHost bool
+	}{
+		{
+			name:             "ExperimentalHost with simple db name",
+			initialDatabase:  "test-db",
+			expectedDatabase: "projects/default/instances/default/databases/test-db",
+			experimentalHost: true,
+		},
+		{
+			name:             "ExperimentalHost with full db name",
+			initialDatabase:  "projects/p/instances/i/databases/d",
+			expectedDatabase: "projects/p/instances/i/databases/d",
+			experimentalHost: true,
+		},
+		{
+			name:             "No ExperimentalHost",
+			initialDatabase:  "test-db",
+			expectedDatabase: "test-db",
+			experimentalHost: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			opts := &Options{
+				DatabaseUri:      tc.initialDatabase,
+				GoogleApiOpts:    adapter.SkipAuthOpts,
+				ExperimentalHost: tc.experimentalHost,
+			}
+			cluster := NewCluster(opts)
+			require.NotNil(t, cluster)
+			assert.Equal(t, tc.expectedDatabase, opts.DatabaseUri)
+			teardownCluster(t, cluster)
+		})
+	}
+}
+
 func TestNewClusterPanicsOnInvalidLogLevel(t *testing.T) {
 	t.Cleanup(adapter.ResetGrpcFuncs())
 	testCases := []struct {

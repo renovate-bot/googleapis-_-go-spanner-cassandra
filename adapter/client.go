@@ -18,6 +18,8 @@ package adapter
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"math"
 	"os"
@@ -33,6 +35,7 @@ import (
 	"google.golang.org/api/option/internaloption"
 	"google.golang.org/grpc"
 
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	_ "google.golang.org/grpc/xds/googledirectpath"
@@ -132,11 +135,14 @@ func newAdapterClient(
 		md:   metadata.Pairs(resourcePrefixHeader, opts.DatabaseUri),
 	}
 
+	var err error
 	// Build grpc options.
-	dialOpts := getAllClientOpts(opts)
+	dialOpts, err := getAllClientOpts(opts)
+	if err != nil {
+		return nil, err
+	}
 
 	// Create a default gapic client.
-	var err error
 	cl.gapicClient, err = vkit.NewClient(ctx, dialOpts...)
 	if err != nil {
 		return nil, err
@@ -161,13 +167,51 @@ func generatedGRPCClientOptions() []option.ClientOption {
 	}
 }
 
+// createExperimentalHostCredentials is only supported for connecting to experimental
+// hosts. It reads the provided CA certificate file and optionally the
+// client certificate and key files to set up TLS or mutual TLS credentials, and
+// creates gRPC dial options to connect to an experimental host endpoint.
+func createExperimentalHostCredentials(caCertFile, clientCertificateFile, clientCertificateKey string) (option.ClientOption, error) {
+	if caCertFile == "" {
+		return nil, nil
+	}
+	ca, err := os.ReadFile(caCertFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read CA certificate file: %w", err)
+	}
+	capool := x509.NewCertPool()
+	if !capool.AppendCertsFromPEM(ca) {
+		return nil, fmt.Errorf("failed to append the CA certificate to CA pool")
+	}
+
+	if clientCertificateFile != "" && clientCertificateKey != "" {
+		// Setting up mutual TLS with both the CA certificate and client certificate.
+		cert, err := tls.LoadX509KeyPair(clientCertificateFile, clientCertificateKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load client certificate/key: %w", err)
+		}
+		creds := credentials.NewTLS(&tls.Config{
+			RootCAs:      capool,
+			Certificates: []tls.Certificate{cert},
+		})
+		return option.WithGRPCDialOption(grpc.WithTransportCredentials(creds)), nil
+	}
+	if clientCertificateFile != "" || clientCertificateKey != "" {
+		return nil, fmt.Errorf("both client certificate and key must be provided for mTLS, but only one was provided")
+	}
+
+	// Setting up TLS with only the CA certificate.
+	creds := credentials.NewTLS(&tls.Config{RootCAs: capool})
+	return option.WithGRPCDialOption(grpc.WithTransportCredentials(creds)), nil
+}
+
 // Combines the default options from the generated client, the default options
 // of the hand-written client and the user options to one list of options.
 // Precedence: user provided GoogleApiOpts > clientDefaultOpts >
 // generatedDefaultOpts
 func getAllClientOpts(
 	opts Options,
-) []option.ClientOption {
+) ([]option.ClientOption, error) {
 	if opts.SpannerEndpoint == "" {
 		opts.SpannerEndpoint = defaultSpannerEndpoint
 	}
@@ -190,7 +234,17 @@ func getAllClientOpts(
 			internaloption.EnableDirectPathXds(),
 		)
 	}
-	if opts.Insecure {
+	if opts.ExperimentalHost {
+		clientDefaultOpts = append(clientDefaultOpts, option.WithoutAuthentication())
+		credOpts, err := createExperimentalHostCredentials(opts.CaCertificate, opts.ClientCertificate, opts.ClientKey)
+		if err != nil {
+			return nil, err
+		}
+		if credOpts != nil {
+			clientDefaultOpts = append(clientDefaultOpts, credOpts)
+		}
+	}
+	if opts.UsePlainText {
 		clientDefaultOpts = append(
 			clientDefaultOpts,
 			option.WithGRPCDialOption(grpc.WithTransportCredentials(insecure.NewCredentials())),
@@ -199,7 +253,7 @@ func getAllClientOpts(
 
 	allDefaultOpts := append(generatedDefaultOpts, clientDefaultOpts...)
 
-	return append(allDefaultOpts, opts.GoogleApiOpts...)
+	return append(allDefaultOpts, opts.GoogleApiOpts...), nil
 }
 
 func (cl *AdapterClient) getMetadata() metadata.MD {
