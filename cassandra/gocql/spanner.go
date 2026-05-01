@@ -64,6 +64,10 @@ type Options struct {
 	ClientCertificate string
 	// Optional string client key file path for establishing mTLS connection
 	ClientKey string
+	// Optional string server certificate file path for proxy TLS connection
+	ProxyTLSCertFile string
+	// Optional string server key file path for proxy TLS connection
+	ProxyTLSKeyFile string
 }
 
 type ProxyAddressTranslator struct {
@@ -106,6 +110,8 @@ func NewCluster(
 			CaCertificate:            opts.CaCertificate,
 			ClientCertificate:        opts.ClientCertificate,
 			ClientKey:                opts.ClientKey,
+			ProxyTLSCertFile:         opts.ProxyTLSCertFile,
+			ProxyTLSKeyFile:          opts.ProxyTLSKeyFile,
 		},
 	)
 	if err != nil {

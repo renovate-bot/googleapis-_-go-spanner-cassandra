@@ -249,6 +249,71 @@ func TestNewCluster_ExperimentalHost(t *testing.T) {
 	}
 }
 
+func TestNewCluster_TLSValidation(t *testing.T) {
+	t.Cleanup(adapter.ResetGrpcFuncs())
+	adapter.MockCreateSessionGrpc()
+
+	testCases := []struct {
+		name        string
+		certFile    string
+		keyFile     string
+		expectPanic bool
+	}{
+		{
+			name:        "OnlyCertSpecified",
+			certFile:    "cert.pem",
+			keyFile:     "",
+			expectPanic: true,
+		},
+		{
+			name:        "OnlyKeySpecified",
+			certFile:    "",
+			keyFile:     "key.pem",
+			expectPanic: true,
+		},
+		{
+			name:        "BothSpecifiedButInvalid",
+			certFile:    "nonexistent.pem",
+			keyFile:     "nonexistent.pem",
+			expectPanic: true,
+		},
+		{
+			name:        "NeitherSpecified",
+			certFile:    "",
+			keyFile:     "",
+			expectPanic: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			opts := &Options{
+				DatabaseUri:      "projects/test/instances/test/databases/test",
+				GoogleApiOpts:    adapter.SkipAuthOpts,
+				ProxyTLSCertFile: tc.certFile,
+				ProxyTLSKeyFile:  tc.keyFile,
+			}
+
+			callNewCluster := func() {
+				cluster := NewCluster(opts)
+				if cluster != nil {
+					teardownCluster(t, cluster)
+				}
+			}
+
+			if tc.expectPanic {
+				require.Panics(
+					t,
+					callNewCluster,
+					"NewCluster should panic",
+				)
+			} else {
+				require.NotPanics(t, callNewCluster, "NewCluster should not panic")
+			}
+		})
+	}
+}
+
 func TestNewClusterPanicsOnInvalidLogLevel(t *testing.T) {
 	t.Cleanup(adapter.ResetGrpcFuncs())
 	testCases := []struct {
