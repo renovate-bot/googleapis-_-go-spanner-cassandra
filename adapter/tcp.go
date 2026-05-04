@@ -18,6 +18,7 @@ package adapter
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net"
@@ -76,7 +77,19 @@ func NewTCPProxy(opts Options) (*TCPProxy, error) {
 	if opts.TCPEndpoint == "" {
 		opts.TCPEndpoint = "localhost:9042"
 	}
-	proxy.listener, err = net.Listen("tcp", opts.TCPEndpoint)
+	if (opts.ProxyTLSCertFile != "") != (opts.ProxyTLSKeyFile != "") {
+		return nil, fmt.Errorf("both ProxyTLSCertFile and ProxyTLSKeyFile must be specified for TLS support")
+	}
+	if opts.ProxyTLSCertFile != "" && opts.ProxyTLSKeyFile != "" {
+		cert, err := tls.LoadX509KeyPair(opts.ProxyTLSCertFile, opts.ProxyTLSKeyFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load proxy TLS key pair: %w", err)
+		}
+		tlsConfig := &tls.Config{Certificates: []tls.Certificate{cert}}
+		proxy.listener, err = tls.Listen("tcp", opts.TCPEndpoint, tlsConfig)
+	} else {
+		proxy.listener, err = net.Listen("tcp", opts.TCPEndpoint)
+	}
 	if err != nil {
 		return nil, fmt.Errorf(
 			"spanner proxy failed to listen on local port: %w",

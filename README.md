@@ -82,6 +82,9 @@ For Go applications already using the `gocql` library, integrating the Spanner C
       opts := &spanner.Options{
           // Required: Specify the Spanner database URI
           DatabaseUri: "projects/your_gcp_project/instances/your_spanner_instance/databases/your_spanner_database",
+          // Optional: Specify TLS certificates for the proxy listener
+          ProxyTLSCertFile: "/path/to/cert.pem",
+          ProxyTLSKeyFile:  "/path/to/key.pem",
       }
       // Optional: Configure other gocql cluster settings as needed
       cluster := spanner.NewCluster(opts)
@@ -127,7 +130,27 @@ For non-Go applications or tools like `cqlsh`, you can run the Spanner Cassandra
     * Replace the value of `-db` with your Spanner database URI.
     * You can omit the `-tcp` to use the default `:9042` and omit `-grpc-channels` to use the default 4.
 
+    * **To run with TLS enabled**, provide the paths to your server certificate and key:
+    ```bash
+    go run cassandra_launcher.go -db "projects/your_gcp_project/instances/your_spanner_instance/databases/your_spanner_database" -proxyTLSCertFile /path/to/cert.pem -proxyTLSKeyFile /path/to/key.pem
+    ```
+
     See [Options](#options) for an explanation of all further options.
+
+    **Verifying TLS Connection**
+
+    You can verify that the TLS proxy is working correctly using `openssl`:
+
+    1. Generate self-signed certificates for testing (if you don't have them):
+       ```bash
+       openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes -subj "/CN=localhost"
+       ```
+    2. Start the proxy with the generated certificates as shown above.
+    3. Verify the connection using `openssl s_client`:
+       ```bash
+       openssl s_client -connect localhost:9042 -CAfile cert.pem
+       ```
+       If successful, you should see `Verify return code: 0 (ok)` in the output.
 
 **Method 2: Run with pre-built docker image**
 
@@ -176,6 +199,14 @@ The following list contains the most frequently used startup options for Spanner
   * If you don't set a commit delay time, Spanner might set a small delay for you if it thinks that will amortize the cost of your writes.
   * You can disable commit delays for applications that are highly latency sensitive by setting the maximum commit delay time to 0.
   * Default: 0 (disabled)
+
+-proxyTLSCertFile <ProxyTLSCertFile>
+  * Optional string server certificate file path for proxy TLS connection.
+  * Must be specified together with -proxyTLSKeyFile.
+
+-proxyTLSKeyFile <ProxyTLSKeyFile>
+  * Optional string server key file path for proxy TLS connection.
+  * Must be specified together with -proxyTLSCertFile.
 ```
 
 ## Supported Cassandra Versions

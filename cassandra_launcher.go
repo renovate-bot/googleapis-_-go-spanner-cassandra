@@ -102,6 +102,18 @@ func main() {
 		"The client key file path for establishing mTLS connection(optional). Default to empty.",
 	)
 
+	proxyTLSCertFile := flag.String(
+		"proxyTLSCertFile",
+		"",
+		"The server certificate file path for proxy TLS connection(optional). Default to empty.",
+	)
+
+	proxyTLSKeyFile := flag.String(
+		"proxyTLSKeyFile",
+		"",
+		"The server key file path for proxy TLS connection(optional). Default to empty.",
+	)
+
 	flag.Parse()
 
 	if *databaseURI == "" {
@@ -122,6 +134,8 @@ func main() {
 		CaCertificate:     *caCertificate,
 		ClientCertificate: *clientCertificate,
 		ClientKey:         *clientKey,
+		ProxyTLSCertFile:  *proxyTLSCertFile,
+		ProxyTLSKeyFile:   *proxyTLSKeyFile,
 	}
 
 	cluster := spanner.NewCluster(opts)
