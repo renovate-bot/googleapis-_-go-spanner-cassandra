@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.6.0](https://github.com/googleapis/go-spanner-cassandra/compare/v0.5.0...v0.6.0) (2026-05-04)
+
+
+### Features
+
+* add TLS support to TCP proxy ([5bc047e](https://github.com/googleapis/go-spanner-cassandra/commit/5bc047e2465c8cc71e764dfd681d4606a96e0b87))
+* add TLS support to TCP proxy ([f17dde7](https://github.com/googleapis/go-spanner-cassandra/commit/f17dde79d0592097b8740157ce1f1934bfe892f6))
+* expose options for connecting to experimental host via tls/mTLS ([07ea31a](https://github.com/googleapis/go-spanner-cassandra/commit/07ea31ace8421cb225d4557cb6ea673498c53b95))
+* expose options for connecting to experimental host via tls/mTLS ([fa15499](https://github.com/googleapis/go-spanner-cassandra/commit/fa15499274fc0f6220c3eec44879cd4c1e94b338))
+* expose options to override spanner endpoint and talking to spanner insecurely ([#67](https://github.com/googleapis/go-spanner-cassandra/issues/67)) ([b85bd6f](https://github.com/googleapis/go-spanner-cassandra/commit/b85bd6f4951ce29d63bf1bee0c9dff59c9f5f746))
+
 ## [0.5.0](https://github.com/googleapis/go-spanner-cassandra/compare/v0.4.0...v0.5.0) (2025-07-23)
 
 
