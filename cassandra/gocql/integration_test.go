@@ -84,7 +84,7 @@ func TestMain(m *testing.M) {
 	var err error
 	keyspace, err = generateKeySpaceName()
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Fatalf("%v", err)
 	}
 
 	switch target {
@@ -170,7 +170,7 @@ func setupAndRunSpanner(m *testing.M, spannerEndpoint string) int {
 	}
 	adminClient, err = database.NewDatabaseAdminClient(ctx, clientOpts...)
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Fatalf("%v", err)
 	}
 	// Create a new random testing database
 	op, err := adminClient.CreateDatabase(ctx, &adminpb.CreateDatabaseRequest{
@@ -178,10 +178,10 @@ func setupAndRunSpanner(m *testing.M, spannerEndpoint string) int {
 		CreateStatement: "CREATE DATABASE `" + keyspace + "`",
 	})
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Fatalf("%v", err)
 	}
 	if _, err := op.Wait(ctx); err != nil {
-		log.Fatalf(err.Error())
+		log.Fatalf("%v", err)
 	}
 	// Drop testing database
 	defer func() {
@@ -646,7 +646,7 @@ func TestUseStatementError(t *testing.T) {
 
 	if err := session.Query("USE gocql_test").Exec(); err != nil {
 		if !strings.HasPrefix(err.Error(), "use statements aren't supported.") {
-			t.Fatalf("expected 'use statements aren't supported', got " + err.Error())
+			t.Fatalf("expected 'use statements aren't supported', got %v", err)
 		}
 	} else {
 		t.Fatal("expected err, got nil.")
@@ -803,7 +803,7 @@ func TestBatchLimit(t *testing.T) {
 	defer session.Close()
 	var batchLimit int
 	if env == "spanner" {
-		batchLimit = 1001
+		batchLimit = 5001
 		createSpannerTable(t, `CREATE TABLE batch_table2 (
 			id INT64 NOT NULL OPTIONS (cassandra_type = 'int'),
 			) PRIMARY KEY (id)`)
