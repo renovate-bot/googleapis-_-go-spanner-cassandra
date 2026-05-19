@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.6.1](https://github.com/googleapis/go-spanner-cassandra/compare/v0.6.0...v0.6.1) (2026-05-19)
+
+
+### Bug Fixes
+
+* errors ([a918dd5](https://github.com/googleapis/go-spanner-cassandra/commit/a918dd57ce3b94f0515a70acb7ac08d6f7df7706))
+* update TestBatchLimit to reflect new Spanner limits ([1d79ff2](https://github.com/googleapis/go-spanner-cassandra/commit/1d79ff2691af31f7bfbec4148ac816fa25119bbd))
+* update TestBatchLimit to reflect new Spanner limits ([58400d6](https://github.com/googleapis/go-spanner-cassandra/commit/58400d6111a50224b66cad6c99147e34d47626d3))
+
 ## [0.6.0](https://github.com/googleapis/go-spanner-cassandra/compare/v0.5.0...v0.6.0) (2026-05-04)
 
 
