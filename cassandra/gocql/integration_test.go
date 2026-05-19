@@ -803,7 +803,7 @@ func TestBatchLimit(t *testing.T) {
 	defer session.Close()
 	var batchLimit int
 	if env == "spanner" {
-		batchLimit = 1001
+		batchLimit = 5001
 		createSpannerTable(t, `CREATE TABLE batch_table2 (
 			id INT64 NOT NULL OPTIONS (cassandra_type = 'int'),
 			) PRIMARY KEY (id)`)
