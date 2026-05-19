@@ -84,7 +84,7 @@ func TestMain(m *testing.M) {
 	var err error
 	keyspace, err = generateKeySpaceName()
 	if err != nil {
-		log.Fatal(err.Error())
+		log.Fatalf("%s", err.Error())
 	}
 
 	switch target {
