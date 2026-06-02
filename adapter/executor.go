@@ -118,6 +118,13 @@ func (re *requestExecutor) prepareCassandraAttachments(
 				}
 			}
 		}
+	case *message.Query, *message.Prepare:
+		if val, found := re.globalState.Load(keyspaceAttachmentKey); found {
+			if req.pb.Attachments == nil {
+				req.pb.Attachments = make(map[string]string)
+			}
+			req.pb.Attachments[keyspaceAttachmentKey] = val
+		}
 	default:
 		return nil
 	}
