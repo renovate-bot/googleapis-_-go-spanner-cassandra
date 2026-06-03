@@ -22,10 +22,12 @@ package adapter
 import (
 	"testing"
 
+	"cloud.google.com/go/spanner/adapter/apiv1/adapterpb"
 	"github.com/datastax/go-cassandra-native-protocol/frame"
 	"github.com/datastax/go-cassandra-native-protocol/message"
 	"github.com/datastax/go-cassandra-native-protocol/primitive"
 )
+
 
 func TestIsDML(t *testing.T) {
 	// Helper function to create a frame with a given message body
@@ -138,3 +140,48 @@ func TestIsDML(t *testing.T) {
 		})
 	}
 }
+
+func TestPrepareCassandraAttachments_Keyspace(t *testing.T) {
+	gs, _ := NewDefaultGlobalState(10)
+	gs.Store(keyspaceAttachmentKey, "test_keyspace")
+
+	re := &requestExecutor{
+		globalState: gs,
+		opts:        &Options{},
+	}
+
+	// Test Case 1: Query message
+	qFrame := &frame.Frame{
+		Header: &frame.Header{OpCode: primitive.OpCodeQuery},
+		Body:   &frame.Body{Message: &message.Query{Query: "SELECT * FROM users"}},
+	}
+	qReq := &requestState{
+		pb: &adapterpb.AdaptMessageRequest{},
+	}
+	
+	re.prepareCassandraAttachments(qFrame, qReq)
+	
+	if qReq.pb.Attachments == nil {
+		t.Errorf("Expected attachments to be allocated for Query message")
+	} else if val, ok := qReq.pb.Attachments[keyspaceAttachmentKey]; !ok || val != "test_keyspace" {
+		t.Errorf("Expected keyspace attachment to be 'test_keyspace', got '%s'", val)
+	}
+
+	// Test Case 2: Prepare message
+	pFrame := &frame.Frame{
+		Header: &frame.Header{OpCode: primitive.OpCodePrepare},
+		Body:   &frame.Body{Message: &message.Prepare{Query: "SELECT * FROM users"}},
+	}
+	pReq := &requestState{
+		pb: &adapterpb.AdaptMessageRequest{},
+	}
+
+	re.prepareCassandraAttachments(pFrame, pReq)
+
+	if pReq.pb.Attachments == nil {
+		t.Errorf("Expected attachments to be allocated for Prepare message")
+	} else if val, ok := pReq.pb.Attachments[keyspaceAttachmentKey]; !ok || val != "test_keyspace" {
+		t.Errorf("Expected keyspace attachment to be 'test_keyspace', got '%s'", val)
+	}
+}
+

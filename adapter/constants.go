@@ -26,4 +26,6 @@ const (
 	writeActionQueryIdPrefix = "W"
 	// Attachment key for max commit delay.
 	maxCommitDelay = "max_commit_delay"
+	// Attachment key for keyspace.
+	keyspaceAttachmentKey = "keyspace"
 )
