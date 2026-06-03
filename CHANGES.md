@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.0](https://github.com/googleapis/go-spanner-cassandra/compare/v0.6.1...v0.7.0) (2026-06-03)
+
+
+### Features
+
+* add support for USE keyspace attachments ([e54c1dc](https://github.com/googleapis/go-spanner-cassandra/commit/e54c1dcd17cd67c0928d6a5f70810ac0fa789cbb))
+* support USE keyspace attachments ([ff4d0d0](https://github.com/googleapis/go-spanner-cassandra/commit/ff4d0d047101446d4af7f5213fb92a313debdc88))
+
 ## [0.6.1](https://github.com/googleapis/go-spanner-cassandra/compare/v0.6.0...v0.6.1) (2026-05-19)
 
 
