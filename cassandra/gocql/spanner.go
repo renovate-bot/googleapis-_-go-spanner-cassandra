@@ -57,7 +57,11 @@ type Options struct {
 	// Defaults to false.
 	UsePlainText bool
 	// Optional boolean indicate whether spanner endpoint is a Experimental Host instance
+	// Deprecated: Use InstanceType=OMNI with SpannerEndpoint instead.
 	ExperimentalHost bool
+	// Specifies the type of Spanner instance to connect to (CLOUD or OMNI).
+	// Defaults to CLOUD.
+	InstanceType adapter.InstanceType
 	// Optional string CA certificate file path for establishing tls connection
 	CaCertificate string
 	// Optional string client certificate file path for establishing mTLS connection
@@ -69,6 +73,13 @@ type Options struct {
 	// Optional string server key file path for proxy TLS connection
 	ProxyTLSKeyFile string
 }
+
+type InstanceType = adapter.InstanceType
+
+const (
+	Cloud InstanceType = adapter.Cloud
+	Omni  InstanceType = adapter.Omni
+)
 
 type ProxyAddressTranslator struct {
 	proxyIP   net.IP
@@ -91,7 +102,10 @@ func NewCluster(
 			err,
 		)
 	}
-	if opts.ExperimentalHost && !strings.Contains(opts.DatabaseUri, "/") {
+	if opts.ExperimentalHost {
+		opts.InstanceType = adapter.Omni
+	}
+	if opts.InstanceType == adapter.Omni && !strings.Contains(opts.DatabaseUri, "/") {
 		opts.DatabaseUri = "projects/default/instances/default/databases/" + opts.DatabaseUri
 	}
 	// Create a new local Cassandra proxy.
@@ -107,6 +121,7 @@ func NewCluster(
 			GoogleApiOpts:            opts.GoogleApiOpts,
 			UsePlainText:             opts.UsePlainText,
 			ExperimentalHost:         opts.ExperimentalHost,
+			InstanceType:             opts.InstanceType,
 			CaCertificate:            opts.CaCertificate,
 			ClientCertificate:        opts.ClientCertificate,
 			ClientKey:                opts.ClientKey,
@@ -114,6 +129,7 @@ func NewCluster(
 			ProxyTLSKeyFile:          opts.ProxyTLSKeyFile,
 		},
 	)
+
 	if err != nil {
 		panic(
 			err,

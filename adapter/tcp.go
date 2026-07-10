@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strings"
 
 	"github.com/datastax/go-cassandra-native-protocol/frame"
 	"github.com/googleapis/go-spanner-cassandra/logger"
@@ -46,6 +47,12 @@ func NewTCPProxy(opts Options) (*TCPProxy, error) {
 	}
 	if opts.NumGrpcChannels <= 0 {
 		opts.NumGrpcChannels = 4
+	}
+	if opts.ExperimentalHost {
+		opts.InstanceType = Omni
+	}
+	if opts.InstanceType == Omni && !strings.Contains(opts.DatabaseUri, "/") {
+		opts.DatabaseUri = "projects/default/instances/default/databases/" + opts.DatabaseUri
 	}
 
 	// Create spanner adapter client.

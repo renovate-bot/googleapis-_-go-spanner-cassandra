@@ -74,6 +74,10 @@ func Error(message string, fields ...zap.Field) {
 	zapLog.Error(message, fields...)
 }
 
+func Warn(message string, fields ...zap.Field) {
+	zapLog.Warn(message, fields...)
+}
+
 func Fatal(message string, fields ...zap.Field) {
 	zapLog.Fatal(message, fields...)
 }

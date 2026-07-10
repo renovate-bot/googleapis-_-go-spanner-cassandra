@@ -203,7 +203,7 @@ func TestBasicBatch(t *testing.T) {
 	}
 }
 
-func TestNewCluster_ExperimentalHost(t *testing.T) {
+func TestNewCluster_ExperimentalHostDeprecatedButWorks(t *testing.T) {
 	t.Cleanup(adapter.ResetGrpcFuncs())
 	adapter.MockCreateSessionGrpc()
 	adapter.MockAdaptMessageGrpc(false)
@@ -240,6 +240,52 @@ func TestNewCluster_ExperimentalHost(t *testing.T) {
 				DatabaseUri:      tc.initialDatabase,
 				GoogleApiOpts:    adapter.SkipAuthOpts,
 				ExperimentalHost: tc.experimentalHost,
+			}
+			cluster := NewCluster(opts)
+			require.NotNil(t, cluster)
+			assert.Equal(t, tc.expectedDatabase, opts.DatabaseUri)
+			teardownCluster(t, cluster)
+		})
+	}
+}
+
+func TestNewCluster_InstanceType(t *testing.T) {
+	t.Cleanup(adapter.ResetGrpcFuncs())
+	adapter.MockCreateSessionGrpc()
+	adapter.MockAdaptMessageGrpc(false)
+
+	testCases := []struct {
+		name             string
+		initialDatabase  string
+		expectedDatabase string
+		instanceType     adapter.InstanceType
+	}{
+		{
+			name:             "InstanceType OMNI with simple db name",
+			initialDatabase:  "test-db",
+			expectedDatabase: "projects/default/instances/default/databases/test-db",
+			instanceType:     adapter.Omni,
+		},
+		{
+			name:             "InstanceType OMNI with full db name",
+			initialDatabase:  "projects/p/instances/i/databases/d",
+			expectedDatabase: "projects/p/instances/i/databases/d",
+			instanceType:     adapter.Omni,
+		},
+		{
+			name:             "InstanceType CLOUD",
+			initialDatabase:  "test-db",
+			expectedDatabase: "test-db",
+			instanceType:     adapter.Cloud,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			opts := &Options{
+				DatabaseUri:   tc.initialDatabase,
+				GoogleApiOpts: adapter.SkipAuthOpts,
+				InstanceType:  tc.instanceType,
 			}
 			cluster := NewCluster(opts)
 			require.NotNil(t, cluster)

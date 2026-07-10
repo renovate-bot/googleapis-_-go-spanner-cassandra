@@ -129,6 +129,9 @@ func newAdapterClient(
 	ctx context.Context,
 	opts Options,
 ) (*AdapterClient, error) {
+	if opts.ExperimentalHost {
+		opts.InstanceType = Omni
+	}
 	// Create a client.
 	cl := &AdapterClient{
 		opts: opts,
@@ -167,11 +170,11 @@ func generatedGRPCClientOptions() []option.ClientOption {
 	}
 }
 
-// createExperimentalHostCredentials is only supported for connecting to experimental
-// hosts. It reads the provided CA certificate file and optionally the
-// client certificate and key files to set up TLS or mutual TLS credentials, and
-// creates gRPC dial options to connect to an experimental host endpoint.
-func createExperimentalHostCredentials(caCertFile, clientCertificateFile, clientCertificateKey string) (option.ClientOption, error) {
+// createSpannerOmniCredentials is only supported for connecting to Spanner
+// Omni. It reads the provided CA certificate file and optionally the client
+// certificate and key files to set up TLS or mutual TLS credentials, and
+// creates gRPC dial options to connect to an Omni endpoint.
+func createSpannerOmniCredentials(caCertFile, clientCertificateFile, clientCertificateKey string) (option.ClientOption, error) {
 	if caCertFile == "" {
 		return nil, nil
 	}
@@ -234,9 +237,9 @@ func getAllClientOpts(
 			internaloption.EnableDirectPathXds(),
 		)
 	}
-	if opts.ExperimentalHost {
+	if opts.InstanceType == Omni {
 		clientDefaultOpts = append(clientDefaultOpts, option.WithoutAuthentication())
-		credOpts, err := createExperimentalHostCredentials(opts.CaCertificate, opts.ClientCertificate, opts.ClientKey)
+		credOpts, err := createSpannerOmniCredentials(opts.CaCertificate, opts.ClientCertificate, opts.ClientKey)
 		if err != nil {
 			return nil, err
 		}
