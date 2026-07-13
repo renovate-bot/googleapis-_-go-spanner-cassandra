@@ -38,6 +38,7 @@ import (
 	database "cloud.google.com/go/spanner/admin/database/apiv1"
 	adminpb "cloud.google.com/go/spanner/admin/database/apiv1/databasepb"
 	"github.com/gocql/gocql"
+	"github.com/googleapis/go-spanner-cassandra/adapter"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -148,23 +149,32 @@ func assertDeepEqual(
 func setupAndRunSpanner(m *testing.M, spannerEndpoint string) int {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
 	defer cancel()
-	experimentalHost := os.Getenv("EXPERIMENTAL_HOST")
-	instanceURI := os.Getenv("INTEGRATION_TEST_INSTANCE")
-	if instanceURI == "" && experimentalHost == "" {
-		log.Fatalf(
-			"at least one of the environment variables INTEGRATION_TEST_INSTANCE or EXPERIMENTAL_HOST must be set and non-empty for the integration test",
-		)
+
+	instanceTypeStr := os.Getenv("SPANNER_INSTANCE_TYPE")
+
+	var instanceType adapter.InstanceType
+	if strings.ToUpper(instanceTypeStr) == "OMNI" {
+		instanceType = adapter.Omni
+	} else {
+		instanceType = adapter.Cloud
 	}
-	if experimentalHost != "" {
+
+	instanceURI := os.Getenv("INTEGRATION_TEST_INSTANCE")
+	if instanceURI == "" && instanceType == adapter.Omni {
 		instanceURI = "projects/default/instances/default"
-		spannerEndpoint = experimentalHost
+	}
+
+	if instanceURI == "" {
+		log.Fatalf(
+			"environment variable INTEGRATION_TEST_INSTANCE must be set and non-empty for the integration test",
+		)
 	}
 	databaseUri = fmt.Sprintf("%s/databases/%s", instanceURI, keyspace)
 	var err error
 	clientOpts := []option.ClientOption{
 		option.WithEndpoint(spannerEndpoint),
 	}
-	if experimentalHost != "" {
+	if instanceType == adapter.Omni {
 		clientOpts = append(clientOpts, option.WithoutAuthentication())
 		clientOpts = append(clientOpts, option.WithGRPCDialOption(grpc.WithTransportCredentials(insecure.NewCredentials())))
 	}
@@ -205,14 +215,12 @@ func setupAndRunSpanner(m *testing.M, spannerEndpoint string) int {
 		SpannerEndpoint: spannerEndpoint,
 		LogLevel:        "warn",
 		MaxCommitDelay:  randomMaxCommitDelay,
-	}
-
-	if experimentalHost != "" {
-		opts.ExperimentalHost = true
-		opts.UsePlainText = true
+		InstanceType:    instanceType,
+		UsePlainText:    instanceType == adapter.Omni,
 	}
 
 	cluster = NewCluster(opts)
+
 	if cluster == nil {
 		log.Fatalf("Failed to create cluster")
 	}

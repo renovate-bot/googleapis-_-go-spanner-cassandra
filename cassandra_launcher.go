@@ -29,6 +29,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	spanner "github.com/googleapis/go-spanner-cassandra/cassandra/gocql"
@@ -81,7 +82,13 @@ func main() {
 	experimentalHost := flag.Bool(
 		"experimentalHost",
 		false,
-		"Spanner Endpoint is an experimental host instance (optional). Default to false.",
+		"Spanner Endpoint is an experimental host instance (optional). Default to false. Deprecated: Use --instanceType=OMNI with --endpoint instead.",
+	)
+
+	instanceType := flag.String(
+		"instanceType",
+		"CLOUD",
+		"Specifies the type of Spanner instance to connect to (CLOUD or OMNI). Defaults to CLOUD.",
 	)
 
 	caCertificate := flag.String(
@@ -122,6 +129,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	if *experimentalHost {
+		logger.Warn("Flag --experimentalHost is deprecated, use --instanceType=OMNI with --endpoint instead.")
+	}
+
 	opts := &spanner.Options{
 		DatabaseUri:       *databaseURI,
 		TCPEndpoint:       *tcpEndpoint,
@@ -131,6 +142,7 @@ func main() {
 		SpannerEndpoint:   *spannerEndpoint,
 		UsePlainText:      *usePlainText,
 		ExperimentalHost:  *experimentalHost,
+		InstanceType:      spanner.InstanceType(strings.ToUpper(*instanceType)),
 		CaCertificate:     *caCertificate,
 		ClientCertificate: *clientCertificate,
 		ClientKey:         *clientKey,

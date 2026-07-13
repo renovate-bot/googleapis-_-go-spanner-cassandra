@@ -101,15 +101,25 @@ func TestGetAllClientOpts(t *testing.T) {
 	assert.NotEmpty(t, clientOpts)
 
 	opts.UsePlainText = false
-	opts.ExperimentalHost = true
+	opts.InstanceType = Omni
 	clientOpts, err = getAllClientOpts(opts)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, clientOpts)
 }
 
-func TestCreateExperimentalHostNoCredentials(t *testing.T) {
+func TestGetAllClientOpts_ExperimentalHostDeprecatedButWorks(t *testing.T) {
 	t.Parallel()
-	creds, err := createExperimentalHostCredentials("", "", "")
+	opts := Options{
+		ExperimentalHost: true,
+	}
+	clientOpts, err := getAllClientOpts(opts)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, clientOpts)
+}
+
+func TestCreateSpannerOmniNoCredentials(t *testing.T) {
+	t.Parallel()
+	creds, err := createSpannerOmniCredentials("", "", "")
 	assert.NoError(t, err)
 	assert.Nil(t, creds)
 }
@@ -128,7 +138,7 @@ func createDummyCerts(t *testing.T) (caFile, certFile, keyFile string) {
 	return
 }
 
-func TestCreateExperimentalHostCredentials(t *testing.T) {
+func TestCreateSpannerOmniCredentials(t *testing.T) {
 	caFile, certFile, keyFile := createDummyCerts(t)
 
 	tests := []struct {
@@ -173,9 +183,9 @@ func TestCreateExperimentalHostCredentials(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			opt, err := createExperimentalHostCredentials(tt.caCert, tt.clientCert, tt.clientKey)
+			opt, err := createSpannerOmniCredentials(tt.caCert, tt.clientCert, tt.clientKey)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("createExperimentalHostCredentials() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("createSpannerOmniCredentials() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !tt.wantErr && tt.caCert != "" {

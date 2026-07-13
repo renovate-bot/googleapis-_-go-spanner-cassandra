@@ -41,7 +41,11 @@ type Options struct {
 	// Defaults to false.
 	UsePlainText bool
 	// Optional boolean indicate whether endpoint is experimental host instance
+	// Deprecated: Use InstanceType=OMNI with SpannerEndpoint instead.
 	ExperimentalHost bool
+	// Specifies the type of Spanner instance to connect to (CLOUD or OMNI).
+	// Defaults to CLOUD.
+	InstanceType InstanceType
 	// Optional string CA certificate file path for establishing tls connection
 	CaCertificate string
 	// Optional string client certificate file path for establishing mTLS connection
@@ -53,3 +57,10 @@ type Options struct {
 	// Optional string server key file path for proxy TLS connection
 	ProxyTLSKeyFile string
 }
+
+type InstanceType string
+
+const (
+	Cloud InstanceType = "CLOUD"
+	Omni  InstanceType = "OMNI"
+)
